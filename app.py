@@ -8,18 +8,18 @@ from PIL import Image
 import requests
 from bs4 import BeautifulSoup
 
-# --- SETUP DA PÁGINA ---
+# SETUP DA PÁGINA
 st.set_page_config(page_title="Gerar Cardápio", layout="wide")
 
-# --- CONTROLE DE ESTADO (Para o botão Limpar) ---
-# Isso cria uma "chave" que muda toda vez que você clica em Limpar, zerando os formulários
+# CONTROLE
+# Botão limpar
 if 'reset_key' not in st.session_state:
     st.session_state.reset_key = 0
 
 def limpar_tela():
     st.session_state.reset_key += 1
 
-# --- ESTRUTURA DE DADOS ---
+# ESTRUTURA DE DADOS
 class Produto(BaseModel):
     Categoria: str
     Tipo: str
@@ -41,16 +41,16 @@ class CardapioCompleto(BaseModel):
     produtos: list[Produto]
     adicionais: list[Adicional]
 
-# --- INTERFACE PRINCIPAL ---
+# INTERFACE PRINCIPAL
 # Título e Botão de Limpar alinhados
 col1, col2 = st.columns([8, 1])
 with col1:
     st.title("🗒️ Gerar Cardápio")
 with col2:
-    st.write("") # Espaçamento
+    st.write("")
     st.button("🔄 Limpar", on_click=limpar_tela, use_container_width=True)
 
-# Obtendo a API Key dos Secrets (Oculto no código)
+# API Key dos Secrets
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
 except KeyError:
@@ -120,7 +120,7 @@ elif tipo_entrada == "Link de Site":
         except Exception as e:
             st.error(f"❌ Erro ao acessar o link: {e}")
 
-# --- PROCESSAMENTO ---
+# PROCESSAMENTO
 if st.button("Gerar Planilhas"):
     if not api_key:
         st.error("⚠️ A API Key não está configurada nos Secrets.")
@@ -137,8 +137,9 @@ if st.button("Gerar Planilhas"):
 
                 [1. REGRAS DA TABELA DE PRODUTOS]
                 - Tipo: DEVE ser exatamente 'Comida', 'Bebida' ou 'Pizza' (ex: 'Pastel sabor pizza' = 'Comida').
-                - Preço: Use sempre ponto (.) para decimais. SE o produto não possuir preço direto no cardápio (ou se o preço depender do sabor escolhido), DEIXE O PREÇO ZERADO (0.00) e aplique os valores na tabela de Adicionais.
+                - Preço: Use sempre ponto (.) para decimais e GARANTA duas casas decimais. ATENÇÃO AO LAYOUT: Nunca herde ou copie o preço do item anterior/vizinho. Cada produto tem seu preço específico. SE o produto não possuir preço direto (ou depender do sabor), DEIXE O PREÇO ZERADO (0.00) e aplique os valores nos Adicionais.
                 - Descrição: Se não houver, deixe "".
+                - PRODUTO VS ADICIONAL: Itens que são claramente complementos, porções extras, modificadores ou acompanhamentos (ex: 'Bacon extra', 'Borda de Catupiry', 'Adicional de Queijo') NUNCA devem ser listados como Produtos. Eles pertencem EXCLUSIVAMENTE à Tabela de Adicionais.
 
                 [2. REGRAS DE NOMENCLATURA NA IMPRESSÃO (MUITO IMPORTANTE)]
                 Para evitar confusão na cozinha, o nome do produto deve ser claro. 
@@ -148,9 +149,10 @@ if st.button("Gerar Planilhas"):
                 Se for um nome único e sem ambiguidade (ex: 'X-Bacon', 'Coca-Cola 2L', 'Smash Burger'), mantenha o nome original.
 
                 [3. REGRAS DA TABELA DE ADICIONAIS E CHAVE DE LIGAÇÃO]
-                - Tipo do Adicional: DEVE ser exatamente 'Outros', 'Sabor Pizza', 'Borda Pizza' ou 'Massa Pizza'. (Atenção: sabores de pastel ou hambúrguer são 'Outros').
+                - Tipo do Adicional: DEVE ser exatamente 'Outro', 'Sabor Pizza', 'Borda Pizza' ou 'Massa Pizza'. (Atenção: sabores de pastel ou hambúrguer são 'Outro').
                 - Chave de Ligação (Coluna Adicional): Se um produto tem adicionais ou exige escolha de sabor, crie uma palavra-chave no campo 'Adicional' do Produto (ex: 'Sabores Pastel'). Use essa EXATA mesma palavra na coluna 'Adicional' da segunda tabela para linkar os itens.
                 - Mínimo e Máximo: Respeite o cardápio. Se for uma escolha obrigatória de sabor onde o preço está atrelado ao sabor, o Produto deve ter preço 0.00 e o Adicional deve ter mínimo 1.
+                - ESCOLHAS OCULTAS NA DESCRIÇÃO (A REGRA DO "OU"): Se a descrição do produto apresentar uma escolha (ex: "...molho barbecue OU maionese...", "...escolha 1 acompanhamento..."), retire essa escolha da descrição textual. Crie uma chave de ligação e coloque essas opções na Tabela de Adicionais com Mínimo 1 e Máximo correspondente ao limite lógico, para forçar o cliente a escolher.
 
                 [4. REGRAS ESPECÍFICAS PARA PIZZAS (ATENÇÃO MÁXIMA)]
                 A estrutura de cadastro de Pizzas difere do resto do cardápio. Siga rigorosamente estas etapas:
@@ -206,7 +208,7 @@ if st.button("Gerar Planilhas"):
                 st.subheader("Planilha de Adicionais")
                 st.dataframe(df_adicionais)
 
-                # --- GERA EXCEL ---
+                # GERA EXCEL
                 buffer = io.BytesIO()
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                     df_produtos.to_excel(writer, sheet_name='Produtos', index=False)
@@ -220,4 +222,5 @@ if st.button("Gerar Planilhas"):
                 )
 
             except Exception as e:
+
                 st.error(f"Erro ao processar com a IA: {e}")
