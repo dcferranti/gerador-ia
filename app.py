@@ -24,7 +24,7 @@ class Produto(BaseModel):
     Categoria: str
     Tipo: str
     Produto: str
-    Preco: float
+    Preco: str
     Descricao: str
     Adicional: str
 
@@ -34,7 +34,7 @@ class Adicional(BaseModel):
     Minimo: int
     Maximo: int
     Item: str
-    Preco: float
+    Preco: str
     Descricao: str
 
 class CardapioCompleto(BaseModel):
@@ -224,3 +224,4 @@ if st.button("Gerar Planilhas"):
             except Exception as e:
 
                 st.error(f"Erro ao processar com a IA: {e}")
+
