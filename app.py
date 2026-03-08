@@ -89,7 +89,10 @@ elif tipo_entrada == "Arquivo PDF":
                 ext = pagina.extract_text()
                 if ext:
                     texto_cardapio += ext + "\n"
-        st.success("✅ PDF lido com sucesso!")
+        if not texto_cardapio.strip():
+            st.error("❌ O sistema não encontrou texto neste PDF. Isso geralmente acontece quando o arquivo é um 'PDF de Imagem'. Por favor, tire prints do cardápio e envie pela opção 'Imagem (Print/Foto)'.")
+        else:
+            st.success("✅ PDF lido e texto extraído com sucesso! ⚠️ Em caso de imagens anexadas no PDF, pode ocorrer de não terem sido lidas. Revise!")
 
 elif tipo_entrada == "Imagem (Print/Foto)":
     st.info("💡 Dica: Se a ordem estiver incorreta, use as setas abaixo das imagens para ajustá-la.")
@@ -290,6 +293,6 @@ if st.button("Gerar Planilhas"):
             except Exception as e:
                 mensagem_erro = str(e)
                 if "429" in mensagem_erro or "RESOURCE_EXHAUSTED" in mensagem_erro or "quota" in mensagem_erro.lower():
-                    st.warning("⏳ **Muitas requisições simultâneas ou limite de uso atingido.**\n\nPor favor, aguarde cerca de 30 segundos a 1 minuto e clique em 'Gerar Planilhas' novamente.")
+                    st.warning("⏳ **Muitas requisições simultâneas ou limite de uso atingido.**\n\nPor favor, aguarde cerca de 30 segundos a 2 minuto e clique em 'Gerar Planilhas' novamente.")
                 else:
                     st.error(f"❌ Erro inesperado ao processar com a IA: {e}")
