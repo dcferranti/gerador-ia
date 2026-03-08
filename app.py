@@ -246,6 +246,7 @@ if st.button("Gerar Planilhas"):
                 - Tipo: "Borda Pizza" ou "Massa Pizza". 
                 - Mínimo: 0 (pois é opcional). 
                 - Máximo: OBRIGATORIAMENTE 1 pelo menos (NUNCA coloque 0, senão o cliente não consegue selecionar).
+                - NOME DA OPÇÃO (MUITO IMPORTANTE): Adicione OBRIGATORIAMENTE o prefixo "Borda de " ou "Massa " no nome da opção. (Exemplo: em vez de extrair apenas "Cheddar" ou "Catupiry", escreva "Borda de Cheddar" e "Borda de Catupiry". Em vez de "Pan", escreva "Massa Pan"). Isso evita que a cozinha confunda a borda com um sabor de pizza.
                 """
 
                 if contexto_manual.strip():
