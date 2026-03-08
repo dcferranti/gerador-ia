@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from google import genai
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import io
 import pdfplumber
 from PIL import Image
@@ -9,31 +9,33 @@ import requests
 from bs4 import BeautifulSoup
 
 # BASE
-st.set_page_config(page_title="Gerar Cardápio", layout="wide")
+st.set_page_config(page_title="Gerar Cardápio", layout="wide", initial_sidebar_state="collapsed")
 
 if 'reset_key' not in st.session_state:
     st.session_state.reset_key = 0
 
 def limpar_tela():
     st.session_state.reset_key += 1
+    if 'ordem_imagens' in st.session_state:
+        del st.session_state['ordem_imagens']
 
-# ESTRUTURA DE DADOS
+# ESTRUTURA DE DADOS (PYDANTIC)
 class Produto(BaseModel):
-    Categoria: str
-    Tipo: str
-    Produto: str
-    Preco: str
-    Descricao: str
-    Adicional: str
+    Categoria: str = Field(description="Categoria do produto")
+    Tipo: str = Field(description="Deve ser 'Comida', 'Bebida' ou 'Pizza'")
+    Produto: str = Field(description="Nome do produto")
+    Preco: str = Field(description="Preço no formato XX.XX")
+    Descricao: str = Field(description="Descrição, se houver")
+    Adicional: str = Field(description="Chaves de ligação separadas por vírgula")
 
 class Adicional(BaseModel):
-    Tipo: str
-    Adicional: str
-    Minimo: int
-    Maximo: int
-    Item: str
-    Preco: str
-    Descricao: str
+    Tipo: str = Field(description="Deve ser 'Sabor Pizza', 'Borda Pizza', 'Massa Pizza' ou 'Outro'")
+    Adicional: str = Field(description="Chave de ligação idêntica à da aba Produtos")
+    Nome: str = Field(description="Nome da opção (Ex: Calabresa, Borda de Catupiry)")
+    Descricao: str = Field(description="Descrição da opção, se houver")
+    Preco: str = Field(description="Preço no formato XX.XX")
+    Minimo: int = Field(description="Quantidade mínima")
+    Maximo: int = Field(description="Quantidade máxima")
 
 class CardapioCompleto(BaseModel):
     raciocinio_interno: str
@@ -48,10 +50,23 @@ with col2:
     st.write("") 
     st.button("🔄 Limpar", on_click=limpar_tela, use_container_width=True)
 
+# MENU LATERAL MINIMIZADO
+with st.sidebar:
+    st.header("⚙️ Motor da IA")
+    st.info("Alterne a chave de conexão caso o limite do Google seja atingido.")
+    chave_selecionada = st.radio(
+        "Selecione a Chave de API:",
+        ["Chave Padrão", "Chave Reserva"],
+        index=0
+    )
+
+# DEFINIÇÃO DA CHAVE API
+nome_secret = "GEMINI_API_KEY" if chave_selecionada == "Chave Padrão" else "GEMINI_API_KEY_RESERVA"
+
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets[nome_secret]
 except KeyError:
-    st.error("⚠️ API Key não encontrada! Configure o arquivo secrets.toml.")
+    st.error(f"⚠️ API Key não encontrada! Configure a variável '{nome_secret}' no arquivo secrets.toml.")
     api_key = None
 
 # INSTRUÇÕES MANUAIS
@@ -97,12 +112,12 @@ elif tipo_entrada == "Arquivo PDF":
 elif tipo_entrada == "Imagem (Print/Foto)":
     st.info("💡 Dica: Se a ordem estiver incorreta, use as setas abaixo das imagens para ajustá-la.")
     
-    arquivos_img = st.file_uploader("Faça o upload de até 3 imagens", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"img_{st.session_state.reset_key}")
+    arquivos_img = st.file_uploader("Faça o upload de até 5 imagens", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"img_{st.session_state.reset_key}")
     
     if arquivos_img:
-        if len(arquivos_img) > 3:
-            st.warning("⚠️ Você enviou mais de 3 imagens. Apenas as 3 primeiras serão analisadas.")
-            arquivos_img = arquivos_img[:3] 
+        if len(arquivos_img) > 5:
+            st.warning("⚠️ Você enviou mais de 5 imagens. Apenas as 5 primeiras serão analisadas.")
+            arquivos_img = arquivos_img[:5] 
         
         # ORDENAÇÃO
         if 'ordem_imagens' not in st.session_state or len(st.session_state.ordem_imagens) != len(arquivos_img):
@@ -110,9 +125,9 @@ elif tipo_entrada == "Imagem (Print/Foto)":
             
         st.markdown("**Ordem de leitura da IA:**")
         
-        tamanho_colunas = [2, 2, 2, 7] 
+        tamanho_colunas = [2, 2, 2, 2, 2, 4] 
         
-        # LINHA 1: IMAGENS
+        # IMAGENS
         cols_img = st.columns(tamanho_colunas) 
         
         for visual_idx, real_idx in enumerate(st.session_state.ordem_imagens):
@@ -123,7 +138,7 @@ elif tipo_entrada == "Imagem (Print/Foto)":
                 imagens_cardapio.append(img)
                 st.image(img, use_container_width=True, caption=f"Pág {visual_idx+1}") 
                 
-        # LINHA 2: BOTÕES
+        # BOTÕES
         cols_btn = st.columns(tamanho_colunas)
         
         for visual_idx, real_idx in enumerate(st.session_state.ordem_imagens):
@@ -174,11 +189,10 @@ elif tipo_entrada == "Link de Site":
 if st.button("Gerar Planilhas"):
     if not api_key:
         st.error("⚠️ A API Key não está configurada nos Secrets.")
-    # Validação para verificar se a lista de imagens está vazia
     elif not texto_cardapio.strip() and len(imagens_cardapio) == 0:
         st.warning("⚠️ Por favor, forneça o cardápio (PDF, Imagem, HTML, Link ou Texto).")
     else:
-        with st.spinner("Analisando o cardápio..."):
+        with st.spinner(f"Analisando com a {chave_selecionada}..."):
             try:
                 client = genai.Client(api_key=api_key)
 
@@ -293,6 +307,6 @@ if st.button("Gerar Planilhas"):
             except Exception as e:
                 mensagem_erro = str(e)
                 if "429" in mensagem_erro or "RESOURCE_EXHAUSTED" in mensagem_erro or "quota" in mensagem_erro.lower():
-                    st.warning("⏳ **Muitas requisições simultâneas ou limite de uso atingido.**\n\nPor favor, aguarde cerca de 30 segundos a 2 minuto e clique em 'Gerar Planilhas' novamente.")
+                    st.warning("⏳ **Limite do Google atingido.**\n\nAbra o menu lateral esquerdo (clique na setinha '>'), mude para a 'Chave Reserva' e tente novamente!")
                 else:
                     st.error(f"❌ Erro inesperado ao processar com a IA: {e}")
