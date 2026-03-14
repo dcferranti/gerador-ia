@@ -50,9 +50,20 @@ with col2:
     st.write("") 
     st.button("🔄 Limpar", on_click=limpar_tela, use_container_width=True)
 
+# TIPO DE ESTABELECIMENTO
+st.markdown("### 🏪 Perfil do Negócio")
+lista_tipos = [
+    "Selecione...", 
+    "Açaí", "Bar", "Buffet por Kg", "Marmitas", "Cafeteria", 
+    "Confeitaria/Doceria/Padaria", "Conveniencia", "FastFood", 
+    "Lanchonete", "Mercado", "Pizzaria", "Restaurante padrão", "Sushi"
+]
+tipo_negocio = st.selectbox("Selecione o tipo de restaurante (Obrigatório):", lista_tipos, key=f"nicho_{st.session_state.reset_key}")
+st.markdown("---")
+
 # MENU LATERAL MINIMIZADO
 with st.sidebar:
-    st.header("⚙️ Motor da IA")
+    st.header("⚙️ API")
     st.info("Alterne a chave de conexão caso o limite do Google seja atingido.")
     chave_selecionada = st.radio(
         "Selecione a Chave de API:",
@@ -187,7 +198,9 @@ elif tipo_entrada == "Link de Site":
 
 # PROCESSAMENTO
 if st.button("Gerar Planilhas"):
-    if not api_key:
+    if tipo_negocio == "Selecione...":
+        st.error("⚠️ Atenção: É obrigatório selecionar o 'Tipo de restaurante' no topo da página antes de continuar.")
+    elif not api_key:
         st.error("⚠️ A API Key não está configurada nos Secrets.")
     elif not texto_cardapio.strip() and len(imagens_cardapio) == 0:
         st.warning("⚠️ Por favor, forneça o cardápio (PDF, Imagem, HTML, Link ou Texto).")
@@ -218,6 +231,7 @@ if st.button("Gerar Planilhas"):
                 [3. REGRAS DA TABELA DE ADICIONAIS E CHAVES DE LIGAÇÃO]
                 - Tipo: 'Outro', 'Sabor Pizza', 'Borda Pizza' ou 'Massa Pizza'. 
                 - Chaves de Ligação: Conecte coluna 'Adicional' do Produto com a segunda tabela.
+                - REAPROVEITAMENTO (ANTI-DUPLICAÇÃO): Se vários produtos compartilham EXATAMENTE o mesmo grupo de adicionais (mesmas opções, preços e limites min/max), NÃO DUPLIQUE o grupo na tabela de Adicionais. Crie a lista de opções apenas UMA VEZ com um nome genérico (Ex: 'Acompanhamentos Padrão', 'Escolha seu Molho') e use essa MESMA chave na coluna 'Adicional' de todos os produtos correspondentes.
                 - MÚLTIPLOS ADICIONAIS (REGRA DA VÍRGULA E ESPAÇO): Se o produto possuir mais de um grupo de opções, você DEVE colocar TODAS as chaves na coluna 'Adicional' separadas por vírgula seguida de UM ESPAÇO. (Exemplo CERTO: "Sabores Pizza Padrão, Escolha de Borda". Exemplo ERRADO: "Sabores,Bordas").
                 - ESCOLHAS OCULTAS: Se descrição tiver "OU" (ex: "fritas ou salada"), crie chave e coloque na Tabela de Adicionais com Mínimo 1.
 
@@ -284,6 +298,9 @@ if st.button("Gerar Planilhas"):
                     ordem_chaves = df_adicionais['Adicional'].unique()
                     df_adicionais['Adicional'] = pd.Categorical(df_adicionais['Adicional'], categories=ordem_chaves, ordered=True)
                     df_adicionais = df_adicionais.sort_values(by=['Tipo', 'Adicional'], kind='mergesort').reset_index(drop=True)
+                
+                    colunas_corretas = ['Tipo', 'Adicional', 'Minimo', 'Maximo', 'Nome', 'Preco', 'Descricao']
+                    df_adicionais = df_adicionais[colunas_corretas]
 
                 st.success("✅ Dados estruturados e ordenados com sucesso!")
 
