@@ -284,23 +284,34 @@ if st.button("Gerar Planilhas"):
 
                 cardapio = response.parsed
 
-                df_produtos = pd.DataFrame([p.model_dump() for p in cardapio.produtos])
-                # Espaço após todas as vírgulas na coluna Adicional
-                df_produtos['Adicional'] = df_produtos['Adicional'].str.replace(r',\s*', ', ', regex=True)
-                df_adicionais = pd.DataFrame([a.model_dump() for a in cardapio.adicionais])
+                lista_produtos = cardapio.produtos if cardapio.produtos else []
+                lista_adicionais = cardapio.adicionais if cardapio.adicionais else []
 
-                if not df_produtos.empty:
-                    ordem_categorias = df_produtos['Categoria'].unique()
-                    df_produtos['Categoria'] = pd.Categorical(df_produtos['Categoria'], categories=ordem_categorias, ordered=True)
-                    df_produtos = df_produtos.sort_values(by=['Categoria'], kind='mergesort').reset_index(drop=True)
+                df_produtos = pd.DataFrame([p.model_dump() for p in lista_produtos])
+                df_adicionais = pd.DataFrame([a.model_dump() for a in lista_adicionais])
+
+                if df_produtos.empty:
+                    df_produtos = pd.DataFrame(columns=['Categoria', 'Tipo', 'Produto', 'Preco', 'Descricao', 'Adicional'])
+                else:
+                    if 'Adicional' in df_produtos.columns:
+                        df_produtos['Adicional'] = df_produtos['Adicional'].astype(str).str.replace(r',\s*', ', ', regex=True)
+                    
+                    if 'Categoria' in df_produtos.columns:
+                        ordem_categorias = df_produtos['Categoria'].unique()
+                        df_produtos['Categoria'] = pd.Categorical(df_produtos['Categoria'], categories=ordem_categorias, ordered=True)
+                        df_produtos = df_produtos.sort_values(by=['Categoria'], kind='mergesort').reset_index(drop=True)
+
+                colunas_corretas = ['Tipo', 'Adicional', 'Minimo', 'Maximo', 'Nome', 'Preco', 'Descricao']
                 
-                if not df_adicionais.empty:
-                    ordem_chaves = df_adicionais['Adicional'].unique()
-                    df_adicionais['Adicional'] = pd.Categorical(df_adicionais['Adicional'], categories=ordem_chaves, ordered=True)
-                    df_adicionais = df_adicionais.sort_values(by=['Tipo', 'Adicional'], kind='mergesort').reset_index(drop=True)
-                
-                    colunas_corretas = ['Tipo', 'Adicional', 'Minimo', 'Maximo', 'Nome', 'Preco', 'Descricao']
-                    df_adicionais = df_adicionais[colunas_corretas]
+                if df_adicionais.empty:
+                    df_adicionais = pd.DataFrame(columns=colunas_corretas)
+                else:
+                    if 'Adicional' in df_adicionais.columns and 'Tipo' in df_adicionais.columns:
+                        ordem_chaves = df_adicionais['Adicional'].unique()
+                        df_adicionais['Adicional'] = pd.Categorical(df_adicionais['Adicional'], categories=ordem_chaves, ordered=True)
+                        df_adicionais = df_adicionais.sort_values(by=['Tipo', 'Adicional'], kind='mergesort').reset_index(drop=True)
+                    
+                    df_adicionais = df_adicionais.reindex(columns=colunas_corretas)
 
                 st.success("✅ Dados estruturados e ordenados com sucesso!")
 
